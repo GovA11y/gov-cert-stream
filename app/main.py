@@ -46,9 +46,12 @@ def callback(message, context):
 
         primary_domain = all_domains[0]
         if primary_domain.endswith('.gov') or primary_domain.endswith('.mil'):
-            logger.info(f"Certificate issued for {primary_domain} "
-                        f"by {context['source']['url']}")
             cert_data = message['data']['leaf_cert']
+            certificate_authority = cert_data['issuer']['aggregated']
+
+            # Log the certificate authority and domain to both console and logger file
+            logger.info(f"Certificate issued for {primary_domain} "
+                        f"by {context['source']['url']} from {certificate_authority}")
 
             # Create a table to show details
             table = Table(show_header=True, header_style="bold magenta")
@@ -60,6 +63,7 @@ def callback(message, context):
             table.add_row("Not After", str(cert_data['not_after']))
             table.add_row("Serial Number", cert_data['serial_number'])
             table.add_row("Fingerprint", cert_data['fingerprint'])
+            table.add_row("Issuer", certificate_authority)
             console.print(table)
 
 
