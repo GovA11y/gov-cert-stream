@@ -1,7 +1,15 @@
 certstream==1.12
+cffi==1.15.1
+iniconfig==2.0.0
 markdown-it-py==3.0.0
 mdurl==0.1.2
+packaging==23.1
+pluggy==1.2.0
+pycparser==2.21
 Pygments==2.15.1
+pyroscope-io==0.8.5
+pytest==7.4.0
+python-dotenv==1.0.0
 rich==13.4.2
 termcolor==2.3.0
 websocket-client==1.6.1

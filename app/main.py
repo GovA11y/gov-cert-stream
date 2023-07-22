@@ -8,13 +8,7 @@ import time
 
 from rich.console import Console
 from rich.table import Table
-from utils import logger
-
-# Initialize the console
-console = Console()
-
-# Declare the time to wait between logs as a constant
-TIME_BETWEEN_LOGS = 5 * 60
+from .utils import logger
 
 
 def log_status():
@@ -71,11 +65,17 @@ def on_error(instance, exception):
     """Logs an error message if the CertStreamClient instance fails."""
     logger.error(f"Exception in CertStreamClient! -> {str(exception)}")
 
+def start_script():
+    # Initialize the console
+    console = Console()
 
-# Initialize the last print time to now
-callback.last_print_time = time.time()
+    # Declare the time to wait between logs as a constant
+    TIME_BETWEEN_LOGS = 5 * 60
 
-logger.info("Starting to monitor certificate stream...")
-certstream.listen_for_events(callback,
-                             on_error=on_error,
-                             url='wss://certstream.calidog.io/')
+    # Initialize the last print time to now
+    callback.last_print_time = time.time()
+
+    logger.info("Starting to monitor certificate stream...")
+    certstream.listen_for_events(callback,
+                                 on_error=on_error,
+                                 url='wss://certstream.calidog.io/')
