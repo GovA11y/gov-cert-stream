@@ -1,16 +1,17 @@
-# app/main.py
-"""
-Monitors certificate stream and logs information about .gov and .mil domains.
-"""
-
 import certstream
 import time
 import pyroscope
+import os
 
 from rich.console import Console
-from rich.table import Table
-from .utils import logger
+from .utils import logger, gcloud_auth
 
+client = gcloud_auth()
+# Get the table reference
+dataset_name = os.getenv('GCLOUD_DATASET_NAME')
+table_name = os.getenv('GCLOUD_BIGQUERY_TABLE')
+table_ref = client.dataset(dataset_name).table(table_name)
+table = client.get_table(table_ref)
 
 # Declare the time to wait between logs as a constant
 TIME_BETWEEN_LOGS = 5 * 60
@@ -44,31 +45,37 @@ def callback(message, context):
 
         if message['message_type'] == "certificate_update":
             all_domains = message['data']['leaf_cert']['all_domains']
+            issuer = message['data']['leaf_cert']['issuer']
 
             if len(all_domains) == 0:
                 return
 
-            primary_domain = all_domains[0]
-            if primary_domain.endswith('.gov') or primary_domain.endswith('.mil'):
-                cert_data = message['data']['leaf_cert']
-                certificate_authority = cert_data['issuer']['aggregated']
+            # Iterate over all domains in the certificate
+            for domain in all_domains:
+                if domain.endswith('.gov') or domain.endswith('.mil'):
+                    issuer_name = issuer['aggregated']
+                    issuer_email = issuer.get('emailAddress')  # Can be null
 
-                # Log the certificate authority and domain to both console and logger file
-                logger.info(f"Certificate issued for {primary_domain} "
-                            f"by {context['source']['url']} from {certificate_authority}")
+                    # Log the timestamp, domain, issuer, and issuer email address
+                    logger.info(f"Timestamp: {message['data']['seen']} \n"
+                                f"Domain: {domain} \n"
+                                f"Issuer: {issuer_name} \n"
+                                f"Issuer Email: {issuer_email}")
 
-                # Create a table to show details
-                table = Table(show_header=True, header_style="bold magenta")
-                table.add_column("Key", style="dim")
-                table.add_column("Value")
+                    # Create a row object to insert into BigQuery
+                    row_to_insert = {
+                        "timestamp": message['data']['seen'],
+                        "domain": domain,
+                        "issuer": issuer_name,
+                        "issuer_email": issuer_email
+                    }
 
-                table.add_row("Subject", cert_data['subject']['aggregated'])
-                table.add_row("Not Before", str(cert_data['not_before']))
-                table.add_row("Not After", str(cert_data['not_after']))
-                table.add_row("Serial Number", cert_data['serial_number'])
-                table.add_row("Fingerprint", cert_data['fingerprint'])
-                table.add_row("Issuer", certificate_authority)
-                console.print(table)
+                    # Insert the row into BigQuery
+                    errors = client.insert_rows(table, [row_to_insert])
+
+                    # If any errors occurred, log them
+                    if errors:
+                        logger.error(errors)
 
 
 def on_error(instance, exception):

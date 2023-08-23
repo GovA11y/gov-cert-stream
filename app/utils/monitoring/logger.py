@@ -6,12 +6,25 @@ This module provides configuration for the logging system.
 
 Author: TheBoatyMcBoatFace
 """
-
+import os
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 import logging
 import time
 from logging.handlers import TimedRotatingFileHandler
 from rich.logging import RichHandler
 
+# Setup Sentry
+sentry_logging = LoggingIntegration(
+    level=logging.INFO,        # Capture info and above as breadcrumbs
+    event_level=logging.ERROR  # Send errors as events
+)
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[sentry_logging],
+    traces_sample_rate=1.0
+)
 
 logger_name = "GovA11y"
 level = 'DEBUG'
